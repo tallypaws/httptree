@@ -1,0 +1,42 @@
+{
+    "name": "@thetally/httptree",
+    "version": "0.3.0",
+    "description": "A TypeScript library for creating and managing HTTP request trees.",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "lint": "eslint src --ext .ts"
+    },
+    "repository": {
+        "type": "git",
+        "url": ""
+    },
+    "keywords": [
+        "http",
+        "tree",
+        "typescript"
+    ],
+    "author": "",
+    "type": "module",
+    "license": "MIT",
+    "files": [
+        "dist/**/*",
+        "!dist/test/**/*"
+    ],
+    "devDependencies": {
+        "@types/node": "^25.2.3",
+        "@types/ws": "^8.18.1",
+        "eslint": "^8.0.0",
+        "typescript": "^5.0.0",
+        "ws": "^8.19.0"
+    },
+    "peerDependencies": {
+        "ws": "^8.0.0"
+    },
+    "peerDependenciesMeta": {
+        "ws": {
+            "optional": true
+        }
+    }
+}
