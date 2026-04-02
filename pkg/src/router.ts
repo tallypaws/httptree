@@ -413,7 +413,7 @@ class Router<P extends Record<string, string | undefined> = {}> {
     return this;
   }
 
-  handle = async (req: TreeRequest<P>, res: http.ServerResponse) => {
+  handle = async (req: TreeRequest, res: http.ServerResponse) => {
     const pathname = url.parse(req.url || "/").pathname || "/";
     const method = (req.method || "GET").toUpperCase();
 
