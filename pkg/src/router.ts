@@ -14,10 +14,10 @@ const debug = (...args: any[]) => {
     }
 };
 
-const _require: NodeRequire =
+const _require: NodeJS.Require =
   typeof require !== "undefined"
     ? require
-    : (createRequire(import.meta.url) as unknown as NodeRequire);
+    : (createRequire(import.meta.url) as unknown as NodeJS.Require);
 
 let WebSocketServer: typeof import("ws").WebSocketServer | undefined;
 
@@ -65,10 +65,16 @@ type ParamsInner<S extends string> = S extends `[[...${infer P}]]/${infer Rest}`
                           : {};
 
 type Middleware = (
-  req: http.IncomingMessage & { params: Record<string, string | undefined> },
+  req: TreeRequest,
   res: http.ServerResponse,
-  next: (err?: Error) => void,
-) => void | Promise<void>;
+  getNext: () => (err?: Error) => Promise<void>,
+) => void | Promise<void> | Promise<TreeResponse> | TreeResponse;
+
+export type TreeRequest<P = Record<string, string | string[] | undefined>> =
+  http.IncomingMessage & {
+    params: Flat<P>;
+    data: Record<string, any>;
+  };
 
 const middlewares: Array<{
   fn: Middleware;
@@ -83,39 +89,59 @@ function use(fn: Middleware, priority = 0) {
   middlewares.push({ fn, priority, idx: _regIdx++ });
 }
 
-function runMiddlewares(
+async function runMiddlewares(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   done: (err?: Error) => void,
 ) {
-  const reqWithParams = req as http.IncomingMessage & {
-    params: Record<string, string | undefined>;
-  };
-  if (!reqWithParams.params) reqWithParams.params = {};
+  const treeReq = req as TreeRequest;
+  if (!treeReq.params) treeReq.params = {};
+  if (!treeReq.data) treeReq.data = {};
 
   const list = [...middlewares].sort(
     (a, b) => b.priority - a.priority || a.idx - b.idx,
   );
 
   let idx = 0;
-  function next(err?: Error) {
+
+  async function dispatch(err?: Error): Promise<void> {
     if (err) return done(err);
+
     const entry = list[idx++];
     if (!entry) return done();
 
     debug(`Running middleware idx=${entry.idx}, priority=${entry.priority}`);
+
+    let manualMode = false;
+
+    const getNext = () => {
+      manualMode = true;
+      return async (err?: Error) => {
+        await dispatch(err);
+      };
+    };
+
     try {
-      const ret = entry.fn(reqWithParams, res, next);
-      if (ret && typeof (ret as any).then === "function") {
-        (ret as Promise<void>).catch((e) =>
-          next(e instanceof Error ? e : new Error(String(e))),
-        );
+      const ret = await entry.fn(treeReq, res, getNext);
+
+      debug(`Middleware idx=${entry.idx} returned:`, ret);
+
+      if (res.writableEnded) return;
+
+      if (ret && (ret as any)[responseSymbol]) {
+        finishResponse(res, ret as TreeResponse);
+        return;
+      }
+
+      if (!manualMode) {
+        await dispatch();
       }
     } catch (e) {
-      next(e instanceof Error ? e : new Error(String(e)));
+      await dispatch(e instanceof Error ? e : new Error(String(e)));
     }
   }
-  next();
+
+  await dispatch();
 }
 
 const upgradeHandlers: Array<{
@@ -188,13 +214,14 @@ type HandlerReturn =
   | Promise<TreeResponse | string | Buffer | void>;
 
 type Handler<P extends Record<string, any>> = (
-  req: http.IncomingMessage & { params: Flat<P> },
+  req: TreeRequest<P>,
+  //http.IncomingMessage & { params: Flat<P> },
   res: http.ServerResponse,
 ) => HandlerReturn;
 
 type WSHandler<P extends Record<string, any> = Record<string, any>> = (
   ws: WebSocket,
-  req: http.IncomingMessage & { params: Flat<P> },
+  req: TreeRequest<P>,
 ) => void | Promise<void>;
 
 export type UpgradeHandler = (
@@ -245,7 +272,7 @@ function finishResponse(
 
   if (typeof result === "string" || Buffer.isBuffer(result)) {
     res.statusCode = 200;
-    res.end(result as any);
+    res.end(result);
     return;
   }
 
@@ -296,9 +323,9 @@ class Router<P extends Record<string, string | undefined> = {}> {
     this.inheritedChecks = inheritedChecks;
     this.errorHandlers = new Map();
     (this as any).parent = undefined;
-    if (!root) {
-      use(this.handle);
-    }
+    // if (!root) {
+    //   use(this.handle);
+    // }
   }
 
   handleError(
@@ -344,24 +371,24 @@ class Router<P extends Record<string, string | undefined> = {}> {
 
   get<Path extends string>(path: Path, h: Handler<Flat<P & Params<Path>>>) {
     debug(`Registering GET route: base='${this.base}', path='${path}'`);
-    return this.add("GET", path as string, h as any);
+    return this.add("GET", path as string, h);
   }
 
   post<Path extends string>(path: Path, h: Handler<Flat<P & Params<Path>>>) {
     debug(`Registering POST route: base='${this.base}', path='${path}'`);
-    return this.add("POST", path as string, h as any);
+    return this.add("POST", path as string, h);
   }
   put<Path extends string>(path: Path, h: Handler<Flat<P & Params<Path>>>) {
     debug(`Registering PUT route: base='${this.base}', path='${path}'`);
-    return this.add("PUT", path as string, h as any);
+    return this.add("PUT", path as string, h);
   }
   delete<Path extends string>(path: Path, h: Handler<Flat<P & Params<Path>>>) {
     debug(`Registering DELETE route: base='${this.base}', path='${path}'`);
-    return this.add("DELETE", path as string, h as any);
+    return this.add("DELETE", path as string, h);
   }
   all<Path extends string>(path: Path, h: Handler<Flat<P & Params<Path>>>) {
     debug(`Registering ALL route: base='${this.base}', path='${path}'`);
-    return this.add("*", path as string, h as any);
+    return this.add("*", path as string, h);
   }
 
   ws<Path extends string>(path: Path, h: WSHandler<Flat<P & Params<Path>>>) {
@@ -386,13 +413,7 @@ class Router<P extends Record<string, string | undefined> = {}> {
     return this;
   }
 
-  handle = async (
-    req: http.IncomingMessage & {
-      params: Record<string, string | string[] | undefined>;
-    },
-    res: http.ServerResponse,
-    next: (err?: Error) => void,
-  ) => {
+  handle = async (req: TreeRequest<P>, res: http.ServerResponse) => {
     const pathname = url.parse(req.url || "/").pathname || "/";
     const method = (req.method || "GET").toUpperCase();
 
@@ -426,14 +447,27 @@ class Router<P extends Record<string, string | undefined> = {}> {
       try {
         req.params = params;
         await r.handler(req, res);
+
+        if (!res.writableEnded) {
+          debug(`Route matched but did not send response, defaulting to 204`);
+          res.statusCode = 204;
+          res.end();
+        }
       } catch (e) {
-        return next(e instanceof Error ? e : new Error(String(e)));
+        // return next(e instanceof Error ? e : new Error(String(e)));
+        return finishThrownResponse(res, e);
       }
 
       return;
     }
 
-    next();
+    // next();
+    // return finishThrownResponse(res, {
+    //   name: "NotFound",
+    //   message: "Not Found",
+    // });
+
+    return;
   };
 
   handleWS = async (ws: WebSocket, req: http.IncomingMessage) => {
@@ -448,21 +482,23 @@ class Router<P extends Record<string, string | undefined> = {}> {
         params[p] = m[i + 1] ? decodeURIComponent(m[i + 1]) : undefined;
       });
 
-      // ensure req.params is available for prechecks and handler
-      const reqWithParams = req as http.IncomingMessage & {
-        params: Record<string, string | undefined>;
-      };
+      const reqWithParams = req as TreeRequest;
       reqWithParams.params = params;
+      const reqWithData = reqWithParams as typeof reqWithParams & {
+        data: Record<string, any>;
+      };
+
+      if (!reqWithData.data) reqWithData.data = {};
 
       for (const chk of r.prechecks) {
-        const ok = await chk(reqWithParams, {} as any);
+        const ok = await chk(reqWithData, {} as any);
         if (!ok) {
           ws.close(1008, "Forbidden");
           return;
         }
       }
 
-      await r.handler(ws, reqWithParams as any);
+      await r.handler(ws, reqWithData);
       return;
     }
 
@@ -526,46 +562,28 @@ export class BaseRouter extends Router {
           res.end("Internal Error");
         } else {
           if (res.writableEnded) return;
-          this.handle(req as any, res, (err) => {
-            if (err) {
-              const handler =
-                this.errorHandlers.get(err.name) ||
-                this.errorHandlers.get("InternalError") ||
-                this.errorHandlers.get("*");
-              if (handler) {
-                try {
-                  handler(err, req, res);
-                } catch (e) {
-                  res.statusCode = 500;
-                  res.end("Internal Error");
-                }
-              } else {
+
+          this.handle(req as any, res);
+          if (!res.writableEnded) {
+            const notFoundHandler =
+              this.errorHandlers.get("NotFound") || this.errorHandlers.get("*");
+
+            if (notFoundHandler) {
+              try {
+                notFoundHandler(
+                  { name: "NotFound", message: "Not Found" },
+                  req,
+                  res,
+                );
+              } catch {
                 res.statusCode = 500;
                 res.end("Internal Error");
               }
             } else {
-              if (!res.writableEnded) {
-                const notFoundHandler =
-                  this.errorHandlers.get("NotFound") ||
-                  this.errorHandlers.get("*");
-                if (notFoundHandler) {
-                  try {
-                    notFoundHandler(
-                      { name: "NotFound", message: "Not Found" },
-                      req,
-                      res,
-                    );
-                  } catch (e) {
-                    res.statusCode = 500;
-                    res.end("Internal Error");
-                  }
-                } else {
-                  res.statusCode = 404;
-                  res.end("Not Found");
-                }
-              }
+              res.statusCode = 404;
+              res.end("Not Found");
             }
-          });
+          }
         }
       });
     });
@@ -748,8 +766,14 @@ const error = _error as typeof _error & {
     body?: string | object,
     headers?: Record<string, string>,
   ) => TreeResponse;
-  notFound: (body?: string | object, headers?: Record<string, string>) => TreeResponse;
-  conflict: (body?: string | object, headers?: Record<string, string>) => TreeResponse;
+  notFound: (
+    body?: string | object,
+    headers?: Record<string, string>,
+  ) => TreeResponse;
+  conflict: (
+    body?: string | object,
+    headers?: Record<string, string>,
+  ) => TreeResponse;
   unprocessableEntity: (
     body?: string | object,
     headers?: Record<string, string>,
