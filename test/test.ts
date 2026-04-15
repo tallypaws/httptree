@@ -11,21 +11,18 @@ const app = root();
 //   console.log(req.data);
 // }, -1);
 
-// app.use((req, res) => {
+// app.use((req, res) => 
 //   console.log(`request: ${req.method} ${req.url} 3rd`);
 //   req.data.test = "test";
 // }, 1);
 
-app.get("/hello/[[name]]", (req, res) => {
-  return error.badRequest("bad request" + req.params.name, {
-    "x-error": "true",
-  });
+app.get("/hello/[TEST]/[[name]]", (req, res) => {
+  req.params
 });
 
 // // middleware before (not sigma, annoying, manual)
-
 // app.use((req, res, next) => {
-//   console.log(req, res);
+//   console.log(req, res); https://discord.com/channels/1275571094874619954/1275571095336128598/1316416194378731571
 //   next();
 // });
 
