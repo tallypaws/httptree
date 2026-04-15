@@ -669,6 +669,7 @@ function normalize(p: string) {
 }
 
 function join(a: string, b: string) {
+  if (a === "/") a = "";
   if (a !== "/" && a.endsWith("/")) a = a.slice(0, -1);
   b = b.replace(/^\/+/, "");
   if (!b) return a;
