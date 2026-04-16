@@ -11,14 +11,25 @@ const app = root();
 //   console.log(req.data);
 // }, -1);
 
-// app.use((req, res) => 
+// app.use((req, res) =>
 //   console.log(`request: ${req.method} ${req.url} 3rd`);
 //   req.data.test = "test";
 // }, 1);
 
-app.get("/hello/[TEST]/[[name]]", (req, res) => {
-  req.params
+app.get("/hello/[TEST]/[[name]]", () => {
+  return json({
+    mendy: true,
+  });
 });
+
+// app.get("/hello/[TEST]/[[name]]", (req, res) => {
+//   res.statusCode = 200;
+//   res.end(
+//     JSON.stringify({
+//       mendy: true,
+//     }),
+//   );
+// });
 
 // // middleware before (not sigma, annoying, manual)
 // app.use((req, res, next) => {
@@ -48,49 +59,49 @@ app.get("/hello/[TEST]/[[name]]", (req, res) => {
 //     next(); // if you dont run this the chain stops :smile:
 // });
 
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+// function delay(ms: number) {
+//   return new Promise((resolve) => setTimeout(resolve, ms));
+// }
 
-const startStamp = Date.now();
-const secondsSinceStart = () => ((Date.now() - startStamp) / 1000).toFixed(2);
+// const startStamp = Date.now();
+// const secondsSinceStart = () => ((Date.now() - startStamp) / 1000).toFixed(2);
 
-app.use(() => {
-  console.log("before delay");
-  console.log(`seconds since start: ${secondsSinceStart()}`);
-});
+// app.use(() => {
+//   console.log("before delay");
+//   console.log(`seconds since start: ${secondsSinceStart()}`);
+// });
 
-app.use(async () => {
-  await delay(1000);
-});
+// app.use(async () => {
+//   await delay(1000);
+// });
 
-app.use(() => {
-  console.log("after delay");
-  console.log(`seconds since start: ${secondsSinceStart()}`);
-});
+// app.use(() => {
+//   console.log("after delay");
+//   console.log(`seconds since start: ${secondsSinceStart()}`);
+// });
 
-// no fukin clue why you would do this
+// // no fukin clue why you would do this
 
-app.use((req, res, getNext) => {
-  const next = getNext();
-  (async () => {
-    // pretend async stuff
-    next();
-  })();
-  // this part runs so this middleware is technically over
-  // calling getNext() tells the router to NOT automatically run the next one
-  // but if you call getNext() after the router already started the next one well good luck buddy
-});
+// app.use((req, res, getNext) => {
+//   const next = getNext();
+//   (async () => {
+//     // pretend async stuff
+//     next();
+//   })();
+//   // this part runs so this middleware is technically over
+//   // calling getNext() tells the router to NOT automatically run the next one
+//   // but if you call getNext() after the router already started the next one well good luck buddy
+// });
 
-// basically dont do this
+// // basically dont do this
 
-app.use((req, res, getNext) => {
-  (async () => {
-    const next = getNext();
-    // pretend async stuff
-    next();
-  })();
-});
+// app.use((req, res, getNext) => {
+//   (async () => {
+//     const next = getNext();
+//     // pretend async stuff
+//     next();
+//   })();
+// });
 
 await app.listen(3000);
 

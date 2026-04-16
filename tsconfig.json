@@ -4,10 +4,11 @@
     "module": "nodenext",
     "declaration": true,
     "moduleResolution": "nodenext",
+    "rootDir": "./test",
     "outDir": "dist",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*", "test"]
+  "include": ["test/**/*", "test"]
 }

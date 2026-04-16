@@ -238,6 +238,7 @@ type Route = {
   info: PatternInfo;
   handler: Handler<any>;
   prechecks: Precheck[];
+  path: string;
 };
 
 type WSRoute = {
@@ -250,9 +251,7 @@ function finishResponse(
   res: http.ServerResponse,
   result: TreeResponse | string | Buffer | void,
 ) {
-  if (res.writableEnded) return;
-
-  if (!result) {
+  if (res.writableEnded) {
     return;
   }
 
@@ -414,12 +413,21 @@ class Router<P extends Record<string, string> = {}> {
   handle = async (req: TreeRequest, res: http.ServerResponse) => {
     const pathname = url.parse(req.url || "/").pathname || "/";
     const method = (req.method || "GET").toUpperCase();
+    debug(`Attempting to match route for ${method} ${pathname}`);
 
     for (const r of this.routes) {
-      if (r.method !== "*" && r.method !== method) continue;
+      if (r.method !== "*" && r.method !== method) {
+        debug(`Path ${r.path} method did not match`);
+        continue;
+      }
 
       const m = r.info.regex.exec(pathname);
-      if (!m) continue;
+      if (!m) {
+        debug(`Path ${r.path} did not match`);
+
+        continue;
+      }
+      debug(`Path ${r.path} matched`);
 
       const params: Record<string, string | string[]> = {};
       r.info.params.forEach((p, i) => {
@@ -446,6 +454,7 @@ class Router<P extends Record<string, string> = {}> {
 
       try {
         req.params = params;
+        debug("Running handler");
         await r.handler(req, res);
 
         if (!res.writableEnded) {
@@ -516,7 +525,11 @@ class Router<P extends Record<string, string> = {}> {
 
     const wrappedHandler: Handler<any> = async (req, res) => {
       try {
+        debug(`Running route handler ${full}`);
         const result = await handler(req, res);
+        debug("handler returned", result);
+        debug("writable ended", res.writableEnded);
+
         finishResponse(res, result);
       } catch (e) {
         // throw e instanceof Error ? e : new Error(String(e));
@@ -529,6 +542,8 @@ class Router<P extends Record<string, string> = {}> {
       info,
       handler: wrappedHandler,
       prechecks: [...this.inheritedChecks],
+
+      path,
     });
 
     this.routes.sort(
@@ -582,8 +597,8 @@ export class BaseRouter extends Router {
                 res.end("Internal Error");
               }
             } else {
-              res.statusCode = 404;
-              res.end("Not Found");
+              // res.statusCode = 404;
+              // res.end("Not Found");
             }
           }
         }
