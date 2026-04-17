@@ -470,11 +470,10 @@ class Router<P extends Record<string, string> = {}> {
       return;
     }
 
-    // next();
-    // return finishThrownResponse(res, {
-    //   name: "NotFound",
-    //   message: "Not Found",
-    // });
+    return finishThrownResponse(res, {
+      name: "NotFound",
+      message: "Not Found",
+    });
 
     return;
   };
