@@ -9,7 +9,8 @@
     "build": "tsc && cd pkg && npm run build && cd ..",
     "lint": "eslint src --ext .ts",
     "test": "node dist/test.js",
-    "prepublish": "cd pkg && npm publish"
+    "ex": "node dist/example.js",
+    "prepublishOnly": "cd pkg && npm publish"
   },
   "dependencies": {
     "httptree": "file:./pkg"
