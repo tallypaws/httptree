@@ -277,23 +277,52 @@ function finishResponse(
   res.end();
 }
 
-function finishThrownResponse(res: http.ServerResponse, err: any) {
+function finishThrownResponse(
+  router: Router<any>,
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  err: any,
+) {
   if (res.writableEnded) return;
 
   if (err && typeof err === "object" && (err as any)[responseSymbol]) {
     const r = err as TreeResponse;
+
     res.statusCode = r.status;
+
     for (const [k, v] of Object.entries(r.headers || {})) {
       try {
         res.setHeader(k, v);
       } catch {}
     }
+
     res.end(r.body);
     return;
   }
 
-  res.statusCode = 500;
-  res.end("Internal Server Error");
+  const type =
+    err?.name === "NotFound"
+      ? "NotFound"
+      : err?.name === "InternalError"
+        ? "InternalError"
+        : "*";
+
+  const handler =
+    router.errorHandlers.get(type) || router.errorHandlers.get("*");
+
+  if (handler) {
+    try {
+      handler(err, req, res);
+      return;
+    } catch (e) {
+      console.error("Error inside error handler:", e);
+    }
+  }
+
+  res.statusCode = err?.name === "NotFound" ? 404 : 500;
+
+  res.end(err?.name === "NotFound" ? "Not Found" : "Internal Server Error");
+
   console.error("Error in handler:", err);
 }
 
@@ -303,7 +332,7 @@ class Router<P extends Record<string, string> = {}> {
   protected wsRoutes: WSRoute[];
   protected inheritedChecks: Precheck[];
   protected root: Router<any>;
-  protected errorHandlers: Map<
+  public errorHandlers: Map<
     string,
     (err: any, req: http.IncomingMessage, res: http.ServerResponse) => void
   >;
@@ -374,6 +403,10 @@ class Router<P extends Record<string, string> = {}> {
   post<Path extends string>(path: Path, h: Handler<Flat<P & Params<Path>>>) {
     debug(`Registering POST route: base='${this.base}', path='${path}'`);
     return this.add("POST", path as string, h);
+  }
+  patch<Path extends string>(path: Path, h: Handler<Flat<P & Params<Path>>>) {
+    debug(`Registering PATCH route: base='${this.base}', path='${path}'`);
+    return this.add("PATCH", path as string, h);
   }
   put<Path extends string>(path: Path, h: Handler<Flat<P & Params<Path>>>) {
     debug(`Registering PUT route: base='${this.base}', path='${path}'`);
@@ -464,13 +497,13 @@ class Router<P extends Record<string, string> = {}> {
         }
       } catch (e) {
         // return next(e instanceof Error ? e : new Error(String(e)));
-        return finishThrownResponse(res, e);
+        return finishThrownResponse(this.root, req, res, e);
       }
 
       return;
     }
 
-    return finishThrownResponse(res, {
+    return finishThrownResponse(this.root, req, res, {
       name: "NotFound",
       message: "Not Found",
     });
@@ -532,7 +565,7 @@ class Router<P extends Record<string, string> = {}> {
         finishResponse(res, result);
       } catch (e) {
         // throw e instanceof Error ? e : new Error(String(e));
-        finishThrownResponse(res, e);
+        finishThrownResponse(this.root, req, res, e);
       }
     };
 
