@@ -62,97 +62,17 @@ type Params<S extends string> = S extends `[[...${infer P}]]/${infer _Rest}`
                           ? Params<Rest>
                           : {};
 
-type Middleware = (
-  req: TreeRequest,
+export type HttpTreeMiddleware = (
+  req: HttpTreeRequest,
   res: http.ServerResponse,
   getNext: () => (err?: Error) => Promise<void>,
 ) => void | Promise<void> | Promise<TreeResponse> | TreeResponse;
 
-export type TreeRequest<P = Record<string, string | string[]>> =
+export type HttpTreeRequest<P = Record<string, string | string[]>> =
   http.IncomingMessage & {
     params: Flat<P>;
     data: Record<string, any>;
   };
-
-const middlewares: Array<{
-  fn: Middleware;
-  priority: number;
-  idx: number;
-}> = [];
-
-let _regIdx = 0;
-
-function use(fn: Middleware, priority = 0) {
-  debug(`Registering middleware with priority=${priority}, idx=${_regIdx}`);
-  middlewares.push({ fn, priority, idx: _regIdx++ });
-}
-
-async function runMiddlewares(
-  req: http.IncomingMessage,
-  res: http.ServerResponse,
-  done: (err?: Error) => void,
-) {
-  const treeReq = req as TreeRequest;
-  if (!treeReq.params) treeReq.params = {};
-  if (!treeReq.data) treeReq.data = {};
-
-  const list = [...middlewares].sort(
-    (a, b) => b.priority - a.priority || a.idx - b.idx,
-  );
-
-  let idx = 0;
-
-  async function dispatch(err?: Error): Promise<void> {
-    if (err) return done(err);
-
-    const entry = list[idx++];
-    if (!entry) return done();
-
-    debug(`Running middleware idx=${entry.idx}, priority=${entry.priority}`);
-
-    let manualMode = false;
-
-    const getNext = () => {
-      manualMode = true;
-      return async (err?: Error) => {
-        await dispatch(err);
-      };
-    };
-
-    try {
-      const ret = await entry.fn(treeReq, res, getNext);
-
-      debug(`Middleware idx=${entry.idx} returned:`, ret);
-
-      if (res.writableEnded) return;
-
-      if (ret && (ret as any)[responseSymbol]) {
-        finishResponse(res, ret as TreeResponse);
-        return;
-      }
-
-      if (!manualMode) {
-        await dispatch();
-      }
-    } catch (e) {
-      await dispatch(e instanceof Error ? e : new Error(String(e)));
-    }
-  }
-
-  await dispatch();
-}
-
-const upgradeHandlers: Array<{
-  fn: UpgradeHandler;
-  priority: number;
-  idx: number;
-}> = [];
-
-let _upgradeIdx = 0;
-
-function useUpgrade(fn: UpgradeHandler, priority = 0) {
-  upgradeHandlers.push({ fn, priority, idx: _upgradeIdx++ });
-}
 
 function escapeRE(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -211,40 +131,40 @@ type HandlerReturn =
   | void
   | Promise<TreeResponse | string | Buffer | void>;
 
-type Handler<P extends Record<string, any>> = (
-  req: TreeRequest<P>,
+export type HttpTreeHandler<P extends Record<string, any>> = (
+  req: HttpTreeRequest<P>,
   //http.IncomingMessage & { params: Flat<P> },
   res: http.ServerResponse,
 ) => HandlerReturn;
 
-type WSHandler<P extends Record<string, any> = Record<string, any>> = (
+export type HttpTreeWSHandler<P extends Record<string, any> = Record<string, any>> = (
   ws: WebSocket,
-  req: TreeRequest<P>,
+  req: HttpTreeRequest<P>,
 ) => void | Promise<void>;
 
-export type UpgradeHandler = (
+export type HttpTreeUpgradeHandler = (
   req: http.IncomingMessage,
   socket: any,
   head: Buffer,
 ) => boolean | void;
 
-type Precheck = (
+export type HttpTreePrecheck = (
   req: http.IncomingMessage,
   res: http.ServerResponse,
 ) => boolean | Promise<boolean>;
 
-type Route = {
+export type HttpTreeRoute = {
   method: string;
   info: PatternInfo;
-  handler: Handler<any>;
-  prechecks: Precheck[];
+  handler: HttpTreeHandler<any>;
+  prechecks: HttpTreePrecheck[];
   path: string;
 };
 
-type WSRoute = {
+export type HttpTreeWSRoute = {
   info: PatternInfo;
-  handler: WSHandler;
-  prechecks: Precheck[];
+  handler: HttpTreeWSHandler;
+  prechecks: HttpTreePrecheck[];
 };
 
 function finishResponse(
@@ -328,10 +248,11 @@ function finishThrownResponse(
 
 class Router<P extends Record<string, string> = {}> {
   protected base: string;
-  protected routes: Route[];
-  protected wsRoutes: WSRoute[];
-  protected inheritedChecks: Precheck[];
+  protected routes: HttpTreeRoute[];
+  protected wsRoutes: HttpTreeWSRoute[];
+  protected inheritedChecks: HttpTreePrecheck[];
   protected root: Router<any>;
+
   public errorHandlers: Map<
     string,
     (err: any, req: http.IncomingMessage, res: http.ServerResponse) => void
@@ -340,7 +261,7 @@ class Router<P extends Record<string, string> = {}> {
   constructor(
     base = "/",
     root?: Router<any>,
-    inheritedChecks: Precheck[] = [],
+    inheritedChecks: HttpTreePrecheck[] = [],
   ) {
     this.base = normalize(base);
     this.root = root ?? this;
@@ -371,7 +292,7 @@ class Router<P extends Record<string, string> = {}> {
 
   branch<Path extends string>(
     path: Path,
-    check?: Precheck,
+    check?: HttpTreePrecheck,
   ): Router<P & Params<Path>> {
     let full = join(this.base, path as string);
     debug(
@@ -395,33 +316,33 @@ class Router<P extends Record<string, string> = {}> {
     return branch;
   }
 
-  get<Path extends string>(path: Path, h: Handler<Flat<P & Params<Path>>>) {
+  get<Path extends string>(path: Path, h: HttpTreeHandler<Flat<P & Params<Path>>>) {
     debug(`Registering GET route: base='${this.base}', path='${path}'`);
     return this.add("GET", path as string, h);
   }
 
-  post<Path extends string>(path: Path, h: Handler<Flat<P & Params<Path>>>) {
+  post<Path extends string>(path: Path, h: HttpTreeHandler<Flat<P & Params<Path>>>) {
     debug(`Registering POST route: base='${this.base}', path='${path}'`);
     return this.add("POST", path as string, h);
   }
-  patch<Path extends string>(path: Path, h: Handler<Flat<P & Params<Path>>>) {
+  patch<Path extends string>(path: Path, h: HttpTreeHandler<Flat<P & Params<Path>>>) {
     debug(`Registering PATCH route: base='${this.base}', path='${path}'`);
     return this.add("PATCH", path as string, h);
   }
-  put<Path extends string>(path: Path, h: Handler<Flat<P & Params<Path>>>) {
+  put<Path extends string>(path: Path, h: HttpTreeHandler<Flat<P & Params<Path>>>) {
     debug(`Registering PUT route: base='${this.base}', path='${path}'`);
     return this.add("PUT", path as string, h);
   }
-  delete<Path extends string>(path: Path, h: Handler<Flat<P & Params<Path>>>) {
+  delete<Path extends string>(path: Path, h: HttpTreeHandler<Flat<P & Params<Path>>>) {
     debug(`Registering DELETE route: base='${this.base}', path='${path}'`);
     return this.add("DELETE", path as string, h);
   }
-  all<Path extends string>(path: Path, h: Handler<Flat<P & Params<Path>>>) {
+  all<Path extends string>(path: Path, h: HttpTreeHandler<Flat<P & Params<Path>>>) {
     debug(`Registering ALL route: base='${this.base}', path='${path}'`);
     return this.add("*", path as string, h);
   }
 
-  ws<Path extends string>(path: Path, h: WSHandler<Flat<P & Params<Path>>>) {
+  ws<Path extends string>(path: Path, h: HttpTreeWSHandler<Flat<P & Params<Path>>>) {
     debug(`Registering WS route: base='${this.base}', path='${path}'`);
     const WSSCtor = getWebSocketServer();
     if (!WSSCtor) {
@@ -434,7 +355,7 @@ class Router<P extends Record<string, string> = {}> {
 
     this.wsRoutes.push({
       info,
-      handler: h as WSHandler,
+      handler: h as HttpTreeWSHandler,
       prechecks: [...this.inheritedChecks],
     });
 
@@ -443,7 +364,7 @@ class Router<P extends Record<string, string> = {}> {
     return this;
   }
 
-  handle = async (req: TreeRequest, res: http.ServerResponse) => {
+  handle = async (req: HttpTreeRequest, res: http.ServerResponse) => {
     const pathname = url.parse(req.url || "/").pathname || "/";
     const method = (req.method || "GET").toUpperCase();
     debug(`Attempting to match route for ${method} ${pathname}`);
@@ -525,7 +446,7 @@ class Router<P extends Record<string, string> = {}> {
         }
       });
 
-      const reqWithParams = req as TreeRequest;
+      const reqWithParams = req as HttpTreeRequest;
       reqWithParams.params = params;
       const reqWithData = reqWithParams as typeof reqWithParams & {
         data: Record<string, any>;
@@ -548,14 +469,14 @@ class Router<P extends Record<string, string> = {}> {
     ws.close(1002, "No WS route");
   };
 
-  protected add(method: string, path: string, handler: Handler<any>) {
+  protected add(method: string, path: string, handler: HttpTreeHandler<any>) {
     const full = join(this.base, path);
     const info = compilePattern(full);
     debug(
       `Adding route: method='${method}', full path='${full}', regex='${info.regex}', params=[${info.params.join(", ")}]`,
     );
 
-    const wrappedHandler: Handler<any> = async (req, res) => {
+    const wrappedHandler: HttpTreeHandler<any> = async (req, res) => {
       try {
         debug(`Running route handler ${full}`);
         const result = await handler(req, res);
@@ -590,6 +511,19 @@ class Router<P extends Record<string, string> = {}> {
 
 export class BaseRouter extends Router {
   #server?: import("http").Server;
+  protected middlewares: Array<{
+    fn: HttpTreeMiddleware;
+    priority: number;
+    idx: number;
+  }> = [];
+  protected middlewareRegIdx = 0;
+
+  protected upgradeHandlers: Array<{
+    fn: HttpTreeUpgradeHandler;
+    priority: number;
+    idx: number;
+  }> = [];
+  protected upgradeRegIdx = 0;
 
   handleError(
     type: string,
@@ -605,7 +539,7 @@ export class BaseRouter extends Router {
 
   listen(port: number, cb?: () => void): Promise<void> | import("http").Server {
     const server = http.createServer((req, res) => {
-      runMiddlewares(req, res, (err) => {
+      this.runMiddlewares(req, res, (err) => {
         if (err) {
           res.statusCode = 500;
           res.end("Internal Error");
@@ -643,7 +577,7 @@ export class BaseRouter extends Router {
     if (WSSCtor) {
       const wss = new WSSCtor({ noServer: true });
 
-      useUpgrade((req, socket, head) => {
+      this.useUpgrade((req, socket, head) => {
         // only accept websocket upgrades
         if (req.headers.upgrade !== "websocket") return false;
 
@@ -656,7 +590,7 @@ export class BaseRouter extends Router {
     }
 
     server.on("upgrade", (req, socket, head) => {
-      const list = [...upgradeHandlers].sort(
+      const list = [...this.upgradeHandlers].sort(
         (a, b) => b.priority - a.priority || a.idx - b.idx,
       );
 
@@ -699,12 +633,70 @@ export class BaseRouter extends Router {
     });
   }
 
-  use(fn: Middleware, priority = 0) {
-    use(fn, priority);
+  use(fn: HttpTreeMiddleware, priority = 0) {
+    debug(
+      `Registering middleware with priority=${priority}, idx=${this.middlewareRegIdx}`,
+    );
+    this.middlewares.push({ fn, priority, idx: this.middlewareRegIdx++ });
   }
 
-  useUpgrade(fn: UpgradeHandler, priority = 0) {
-    useUpgrade(fn, priority);
+  async runMiddlewares(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    done: (err?: Error) => void,
+  ) {
+    const treeReq = req as HttpTreeRequest;
+    if (!treeReq.params) treeReq.params = {};
+    if (!treeReq.data) treeReq.data = {};
+
+    const list = [...this.middlewares].sort(
+      (a, b) => b.priority - a.priority || a.idx - b.idx,
+    );
+
+    let idx = 0;
+
+    async function dispatch(err?: Error): Promise<void> {
+      if (err) return done(err);
+
+      const entry = list[idx++];
+      if (!entry) return done();
+
+      debug(`Running middleware idx=${entry.idx}, priority=${entry.priority}`);
+
+      let manualMode = false;
+
+      const getNext = () => {
+        manualMode = true;
+        return async (err?: Error) => {
+          await dispatch(err);
+        };
+      };
+
+      try {
+        const ret = await entry.fn(treeReq, res, getNext);
+
+        debug(`Middleware idx=${entry.idx} returned:`, ret);
+
+        if (res.writableEnded) return;
+
+        if (ret && (ret as any)[responseSymbol]) {
+          finishResponse(res, ret as TreeResponse);
+          return;
+        }
+
+        if (!manualMode) {
+          await dispatch();
+        }
+      } catch (e) {
+        await dispatch(e instanceof Error ? e : new Error(String(e)));
+      }
+    }
+
+    await dispatch();
+  }
+
+  useUpgrade(fn: HttpTreeUpgradeHandler, priority = 0) {
+    this.upgradeHandlers.push({ fn, priority, idx: this.upgradeRegIdx++ });
   }
 }
 

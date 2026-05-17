@@ -167,3 +167,11 @@ tree.use(async (req, res, evilness) => {
 await tree.listen(3000);
 
 // or tree.listen(3000, () => {})
+
+// supports two trees
+const aSECONDtree = root();
+aSECONDtree.get("/hawwo", () => "HI");
+aSECONDtree.use(() => {
+  console.log("request!")
+})
+await aSECONDtree.listen(3001);
