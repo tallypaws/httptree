@@ -101,13 +101,10 @@ tree.get("/json", () =>
 
 //middleware
 
+
 tree.use((req, res) => {
   if (req.url === "/middleware") return text("hello"); // you could also res.end() but thats evil
 });
-
-tree.use((req, res) => {
-  console.log("low priority");
-}, 0);
 
 tree.use((req, res) => {
   console.log("high priority");
@@ -116,6 +113,22 @@ tree.use((req, res) => {
 tree.use((req) => {
   req.data.start = Date.now();
 });
+
+// after the main route
+tree.use((req) => {
+  if (req.isError()) return; 
+  req.response!.headers["X-Took"] = `${Date.now() - req.data.start}ms`;
+}, -1);
+
+tree.use((req) => {
+  if (!req.sentResponse()) return text("nobody answered this one");
+}, -10);
+
+const admin = tree.branch("/admin");
+admin.use((req) => {
+  if (!req.headers.authorization) throw error.unauthorized();
+});
+admin.get("/stats", () => json({ users: 3 }));
 
 tree.get("/data", (req) => {
   return json({
@@ -127,6 +140,31 @@ tree.get("/async", async () => {
   await new Promise((r) => setTimeout(r, 100));
 
   return text("done");
+});
+
+
+
+tree.post("/body/json", async (req) => {
+  const body = await req.getJSON<{ name: string }>({ maxSize: "10kb" });
+  return json({ hello: body.name });
+});
+
+tree.post("/body/text", async (req) => text((await req.getText()).toUpperCase()));
+
+tree.post("/body/validated", async (req) => {
+  const body = await req.getJSON({
+    validate: (v: any) => {
+      if (typeof v?.n !== "number") throw new Error("n must be a number");
+      return v as { n: number };
+    },
+  });
+  return json({ doubled: body.n * 2 });
+});
+
+tree.post("/body/upload", async (req) => {
+  const avatar = await req.getFile("avatar", { maxFileSize: "2mb" });
+  const { fields } = await req.getForm();
+  return json({ fields, avatar: avatar && { name: avatar.filename, size: avatar.size } });
 });
 
 // legacy
