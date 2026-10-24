@@ -1,5 +1,5 @@
 {
-    "name": "@thetally/httptree",
+    "name": "@tally.paws/httptree",
     "version": "0.5.5",
     "description": "A TypeScript library for creating and managing HTTP request trees.",
     "main": "dist/index.js",

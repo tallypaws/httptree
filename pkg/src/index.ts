@@ -11,13 +11,13 @@ import {
   flushResponse,
   isTreeResponse,
   toTreeResponse,
-  type TreeResponse,
+  type TreeResponse
 } from "./response.js";
 import {
   ensureTreeRequest,
   stateOf,
   TreeRequest,
-  type HttpTreeRequest,
+  type HttpTreeRequest
 } from "./request.js";
 import type { BodyConfig } from "./body.js";
 
@@ -31,12 +31,12 @@ export {
   file,
   stream,
   html,
-  type TreeResponse,
+  type TreeResponse
 } from "./response.js";
 export {
   TreeRequest,
   type HttpTreeRequest,
-  type TreeRequestExtras,
+  type TreeRequestExtras
 } from "./request.js";
 export type {
   BodyConfig,
@@ -46,7 +46,7 @@ export type {
   ParsedForm,
   Size,
   TextOptions,
-  UploadedFile,
+  UploadedFile
 } from "./body.js";
 
 let WebSocketServer: typeof import("ws").WebSocketServer | undefined;
@@ -90,7 +90,6 @@ type Params<S extends string> = S extends `[[...${infer P}]]/${infer _Rest}`
                           ? Params<Rest>
                           : {};
 
-
 export type HandlerReturn =
   | object
   | string
@@ -103,25 +102,19 @@ export type HandlerReturn =
 
 export type HttpTreeNext = () => (err?: Error) => Promise<void>;
 
-
 export type HttpTreeMiddleware<
-  P extends Record<string, any> = Record<string, string | string[]>,
+  P extends Record<string, any> = Record<string, string | string[]>
 > = (
   req: HttpTreeRequest<P>,
   res: http.ServerResponse,
-  getNext: HttpTreeNext,
+  getNext: HttpTreeNext
 ) => HandlerReturn;
 
 function escapeRE(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-type PatternInfo = {
-  regex: RegExp;
-  params: string[];
-  score: number;
-};
-
+type PatternInfo = { regex: RegExp; params: string[]; score: number };
 
 function compilePattern(path: string, prefix = false): PatternInfo {
   if (!path.startsWith("/")) path = "/" + path;
@@ -200,29 +193,28 @@ function getPathname(rawUrl: string | undefined) {
 export type HttpTreeHandler<P extends Record<string, any>> = (
   req: HttpTreeRequest<P>,
   res: http.ServerResponse,
-  getNext: HttpTreeNext,
+  getNext: HttpTreeNext
 ) => HandlerReturn;
 
 export type HttpTreeErrorHandler = (
   err: any,
   req: HttpTreeRequest,
-  res: http.ServerResponse,
+  res: http.ServerResponse
 ) => HandlerReturn;
 
-export type HttpTreeWSHandler<P extends Record<string, any> = Record<string, any>> = (
-  ws: WebSocket,
-  req: HttpTreeRequest<P>,
-) => void | Promise<void>;
+export type HttpTreeWSHandler<
+  P extends Record<string, any> = Record<string, any>
+> = (ws: WebSocket, req: HttpTreeRequest<P>) => void | Promise<void>;
 
 export type HttpTreeUpgradeHandler = (
   req: http.IncomingMessage,
   socket: any,
-  head: Buffer,
+  head: Buffer
 ) => boolean | void;
 
 export type HttpTreePrecheck = (
   req: http.IncomingMessage,
-  res: http.ServerResponse,
+  res: http.ServerResponse
 ) => boolean | Promise<boolean>;
 
 export type HttpTreeRoute = {
@@ -261,7 +253,7 @@ type ChainItem = {
   fn: (
     req: any,
     res: http.ServerResponse,
-    getNext: HttpTreeNext,
+    getNext: HttpTreeNext
   ) => HandlerReturn;
   router: Router<any>;
   params: RouteParams;
@@ -283,7 +275,7 @@ async function renderError(
   router: Router<any>,
   req: HttpTreeRequest,
   res: http.ServerResponse,
-  err: any,
+  err: any
 ): Promise<TreeResponse | undefined> {
   const name = err?.name;
   const type =
@@ -309,7 +301,7 @@ async function renderError(
   if (name === "NotFound") return error.notFound();
   if (name === "MethodNotAllowed") {
     return error.methodNotAllowed(undefined, {
-      Allow: (err.allow as string[]).join(", "),
+      Allow: (err.allow as string[]).join(", ")
     });
   }
 
@@ -334,7 +326,7 @@ class Router<P extends Record<string, string> = {}> {
   constructor(
     base = "/",
     root?: Router<any>,
-    inheritedChecks: HttpTreePrecheck[] = [],
+    inheritedChecks: HttpTreePrecheck[] = []
   ) {
     this.base = normalize(base);
     this.root = root ?? this;
@@ -351,10 +343,10 @@ class Router<P extends Record<string, string> = {}> {
 
   handleError(
     type: "NotFound" | "MethodNotAllowed" | "InternalError" | "*",
-    handler: HttpTreeErrorHandler,
+    handler: HttpTreeErrorHandler
   ) {
     debug(
-      `Registering error handler for type '${type}' on base '${this.base}'`,
+      `Registering error handler for type '${type}' on base '${this.base}'`
     );
     this.errorHandlers.set(type, handler);
     return this;
@@ -362,11 +354,11 @@ class Router<P extends Record<string, string> = {}> {
 
   branch<Path extends string>(
     path: Path,
-    check?: HttpTreePrecheck,
+    check?: HttpTreePrecheck
   ): Router<P & Params<Path>> {
     let full = join(this.base, path as string);
     debug(
-      `branch: parent base='${this.base}', requested path='${path}', full before normalization='${full}'`,
+      `branch: parent base='${this.base}', requested path='${path}', full before normalization='${full}'`
     );
     const normalizedFull = normalize(full);
     debug(`normalized full path for branch: '${normalizedFull}'`);
@@ -375,14 +367,12 @@ class Router<P extends Record<string, string> = {}> {
     const branch = new Router<P & Params<Path>>(
       normalizedFull,
       this.root,
-      checks,
+      checks
     );
     branch.parent = this;
     if (!(this as any).branches) (this as any).branches = [];
     (this as any).branches.push(branch);
-    debug(
-      `branch with base '${branch.base}' under parent base '${this.base}'`,
-    );
+    debug(`branch with base '${branch.base}' under parent base '${this.base}'`);
     return branch;
   }
 
@@ -394,9 +384,7 @@ class Router<P extends Record<string, string> = {}> {
    *  - negative priorities run after handlers
    */
   use(fn: HttpTreeMiddleware<Flat<P>>, priority = 1) {
-    debug(
-      `Registering middleware on '${this.base}' with priority=${priority}`,
-    );
+    debug(`Registering middleware on '${this.base}' with priority=${priority}`);
     this.middlewares.push({
       fn: fn as HttpTreeMiddleware<any>,
       priority,
@@ -405,43 +393,70 @@ class Router<P extends Record<string, string> = {}> {
         this === this.root || this.base === "/"
           ? undefined
           : compilePattern(this.base, true),
-      router: this,
+      router: this
     });
     return this;
   }
 
-  get<Path extends string>(path: Path, h: HttpTreeHandler<Flat<P & Params<Path>>>, priority = 0) {
+  get<Path extends string>(
+    path: Path,
+    h: HttpTreeHandler<Flat<P & Params<Path>>>,
+    priority = 0
+  ) {
     debug(`Registering GET route: base='${this.base}', path='${path}'`);
     return this.add("GET", path as string, h, priority);
   }
 
-  post<Path extends string>(path: Path, h: HttpTreeHandler<Flat<P & Params<Path>>>, priority = 0) {
+  post<Path extends string>(
+    path: Path,
+    h: HttpTreeHandler<Flat<P & Params<Path>>>,
+    priority = 0
+  ) {
     debug(`Registering POST route: base='${this.base}', path='${path}'`);
     return this.add("POST", path as string, h, priority);
   }
-  patch<Path extends string>(path: Path, h: HttpTreeHandler<Flat<P & Params<Path>>>, priority = 0) {
+  patch<Path extends string>(
+    path: Path,
+    h: HttpTreeHandler<Flat<P & Params<Path>>>,
+    priority = 0
+  ) {
     debug(`Registering PATCH route: base='${this.base}', path='${path}'`);
     return this.add("PATCH", path as string, h, priority);
   }
-  put<Path extends string>(path: Path, h: HttpTreeHandler<Flat<P & Params<Path>>>, priority = 0) {
+  put<Path extends string>(
+    path: Path,
+    h: HttpTreeHandler<Flat<P & Params<Path>>>,
+    priority = 0
+  ) {
     debug(`Registering PUT route: base='${this.base}', path='${path}'`);
     return this.add("PUT", path as string, h, priority);
   }
-  delete<Path extends string>(path: Path, h: HttpTreeHandler<Flat<P & Params<Path>>>, priority = 0) {
+  delete<Path extends string>(
+    path: Path,
+    h: HttpTreeHandler<Flat<P & Params<Path>>>,
+    priority = 0
+  ) {
     debug(`Registering DELETE route: base='${this.base}', path='${path}'`);
     return this.add("DELETE", path as string, h, priority);
   }
-  all<Path extends string>(path: Path, h: HttpTreeHandler<Flat<P & Params<Path>>>, priority = 0) {
+  all<Path extends string>(
+    path: Path,
+    h: HttpTreeHandler<Flat<P & Params<Path>>>,
+    priority = 0
+  ) {
     debug(`Registering ALL route: base='${this.base}', path='${path}'`);
     return this.add("*", path as string, h, priority);
   }
 
-  ws<Path extends string>(path: Path, h: HttpTreeWSHandler<Flat<P & Params<Path>>>) {
+  ws<Path extends string>(
+    path: Path,
+    h: HttpTreeWSHandler<Flat<P & Params<Path>>>
+  ) {
     debug(`Registering WS route: base='${this.base}', path='${path}'`);
     const WSSCtor = getWebSocketServer();
     if (!WSSCtor) {
       throw new Error(
-        "WebSocket support requires the 'ws' package. Please install it first.",
+        "WebSocket support requires the 'ws' package. Please install it first."
       );
     }
     const full = join(this.base, path as string);
@@ -450,7 +465,7 @@ class Router<P extends Record<string, string> = {}> {
     this.wsRoutes.push({
       info,
       handler: h as HttpTreeWSHandler,
-      prechecks: [...this.inheritedChecks],
+      prechecks: [...this.inheritedChecks]
     });
 
     this.wsRoutes.sort((a, b) => b.info.score - a.info.score);
@@ -505,7 +520,7 @@ class Router<P extends Record<string, string> = {}> {
         idx: mw.idx,
         fn: mw.fn,
         router: mw.router,
-        params,
+        params
       });
     }
 
@@ -517,7 +532,7 @@ class Router<P extends Record<string, string> = {}> {
         fn: route.handler,
         router: route.router,
         params: routeParams!,
-        prechecks: route.prechecks,
+        prechecks: route.prechecks
       });
     } else {
       items.push({
@@ -531,11 +546,11 @@ class Router<P extends Record<string, string> = {}> {
           if (allowed.size) {
             throw Object.assign(new Error("Method Not Allowed"), {
               name: "MethodNotAllowed",
-              allow: [...allowed],
+              allow: [...allowed]
             });
           }
           throw Object.assign(new Error("Not Found"), { name: "NotFound" });
-        },
+        }
       });
     }
 
@@ -554,7 +569,10 @@ class Router<P extends Record<string, string> = {}> {
     let pos = 0;
     let last: ChainItem | undefined;
 
-    debug(`running ${method} ${path}`, items.map((i) => `${i.kind}(${i.priority})`));
+    debug(
+      `running ${method} ${path}`,
+      items.map((i) => `${i.kind}(${i.priority})`)
+    );
 
     const take = () => {
       const p = getPathname(req.url);
@@ -562,7 +580,7 @@ class Router<P extends Record<string, string> = {}> {
         path = p;
         const l = last;
         items = this.resolveChain(p, method).filter(
-          (i) => !l || compareItems(i, l) > 0,
+          (i) => !l || compareItems(i, l) > 0
         );
         pos = 0;
       }
@@ -666,7 +684,9 @@ class Router<P extends Record<string, string> = {}> {
       for (;;) {
         const item = take();
         if (!item) return;
-        debug(`running ${item.kind} (priority ${item.priority}, idx ${item.idx})`);
+        debug(
+          `running ${item.kind} (priority ${item.priority}, idx ${item.idx})`
+        );
         if ((await invoke(item)) === "manual") return;
       }
     };
@@ -676,7 +696,11 @@ class Router<P extends Record<string, string> = {}> {
 
       if (rawSent() || res.destroyed) return;
 
-      flushResponse(res, st.response ?? createResponse("", 204), method === "HEAD");
+      flushResponse(
+        res,
+        st.response ?? createResponse("", 204),
+        method === "HEAD"
+      );
     } catch (e) {
       console.error("httptree internal error:", e);
       if (!res.headersSent) {
@@ -688,8 +712,10 @@ class Router<P extends Record<string, string> = {}> {
     }
   }
 
-  handle = (req: http.IncomingMessage, res: http.ServerResponse): Promise<void> =>
-    this.root.run(req, res);
+  handle = (
+    req: http.IncomingMessage,
+    res: http.ServerResponse
+  ): Promise<void> => this.root.run(req, res);
 
   handleWS = async (ws: WebSocket, rawReq: http.IncomingMessage) => {
     const req = ensureTreeRequest(rawReq);
@@ -727,12 +753,12 @@ class Router<P extends Record<string, string> = {}> {
     method: string,
     path: string,
     handler: HttpTreeHandler<any>,
-    priority = 0,
+    priority = 0
   ) {
     const full = join(this.base, path);
     const info = compilePattern(full);
     debug(
-      `Adding route: method='${method}', full path='${full}', regex='${info.regex}', params=[${info.params.join(", ")}]`,
+      `Adding route: method='${method}', full path='${full}', regex='${info.regex}', params=[${info.params.join(", ")}]`
     );
 
     this.routes.push({
@@ -743,14 +769,14 @@ class Router<P extends Record<string, string> = {}> {
       path,
       priority,
       idx: this.nextIdx(),
-      router: this,
+      router: this
     });
 
     this.routes.sort(
       (a, b) =>
         b.info.score - a.info.score ||
         b.info.regex.source.length - a.info.regex.source.length ||
-        Number(a.method === "*") - Number(b.method === "*"),
+        Number(a.method === "*") - Number(b.method === "*")
     );
 
     return this;
@@ -790,7 +816,7 @@ export class BaseRouter extends Router {
       { IncomingMessage: TreeRequest as any },
       (req, res) => {
         void this.handle(req, res);
-      },
+      }
     );
 
     this.#server = server;
@@ -816,7 +842,7 @@ export class BaseRouter extends Router {
 
     server.on("upgrade", (req, socket, head) => {
       const list = [...this.upgradeHandlers].sort(
-        (a, b) => b.priority - a.priority || a.idx - b.idx,
+        (a, b) => b.priority - a.priority || a.idx - b.idx
       );
 
       for (const h of list) {
@@ -879,12 +905,21 @@ function join(a: string, b: string) {
 }
 
 /**
- * `root()`, `root("/api")`, `root("/", { body: { maxSize: "2mb" } })`
- * or `root({ body: { maxSize: "2mb" } })`
+ * @example
+ ```ts
+   //no args (defaults)
+   const tree = root()
+   // with base path
+   const tree = root("/api")
+   // with base path and options
+   const tree = root("/", { body: { maxSize: "2mb" } })
+   // only options
+   const tree = root({ body: { maxSize: "2mb" } })
+   ```
  */
 export function root(
   baseOrOptions: string | HttpTreeOptions = "/",
-  options?: HttpTreeOptions,
+  options?: HttpTreeOptions
 ) {
   const base = typeof baseOrOptions === "string" ? baseOrOptions : "/";
   const opts = typeof baseOrOptions === "string" ? options : baseOrOptions;
