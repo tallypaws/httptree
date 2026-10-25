@@ -240,6 +240,8 @@ export type HttpTreeWSRoute = {
   info: PatternInfo;
   handler: HttpTreeWSHandler;
   prechecks: HttpTreePrecheck[];
+  path: string;
+  router: Router<any>;
 };
 
 export interface HttpTreeOptions {
@@ -317,6 +319,8 @@ class Router<P extends Record<string, string> = {}> {
   protected inheritedChecks: HttpTreePrecheck[];
   protected root: Router<any>;
   protected seq = 0;
+  protected branches: Router<any>[] = [];
+  protected guarded = false;
   public parent?: Router<any>;
 
   public bodyConfig: BodyConfig = {};
@@ -370,8 +374,8 @@ class Router<P extends Record<string, string> = {}> {
       checks
     );
     branch.parent = this;
-    if (!(this as any).branches) (this as any).branches = [];
-    (this as any).branches.push(branch);
+    branch.guarded = !!check;
+    this.branches.push(branch);
     debug(`branch with base '${branch.base}' under parent base '${this.base}'`);
     return branch;
   }
@@ -465,12 +469,92 @@ class Router<P extends Record<string, string> = {}> {
     this.wsRoutes.push({
       info,
       handler: h as HttpTreeWSHandler,
-      prechecks: [...this.inheritedChecks]
+      prechecks: [...this.inheritedChecks],
+      path: path as string,
+      router: this
     });
 
     this.wsRoutes.sort((a, b) => b.info.score - a.info.score);
 
     return this;
+  }
+
+  /**
+   * Displays this router as a hiarchy tree
+   *
+   * @example
+   * ```ts
+   * const tree = root();
+   * tree.use(logger);
+   * tree.get("/", () => "hi");
+   * const api = tree.branch("/api", isAuthed);
+   * api.get("/users/[id]", () => "user");
+   *
+   * tree.print();
+   * // /
+   * // ├─ use logger (priority 1)
+   * // ├─ GET    /
+   * // └─ /api [precheck]
+   * //    └─ GET    /users/[id]
+   * ```
+   */
+  print(log: (text: string) => void = console.log): string {
+    const text = this.toString();
+    log(text);
+    return text;
+  }
+
+  /** the same drawing as {@link print} without logging it */
+  toString(): string {
+    const lines = [this.base];
+    this.drawChildren("", lines);
+    return lines.join("\n");
+  }
+
+  private drawChildren(prefix: string, lines: string[]) {
+    const leaves: { idx: number; text: string }[] = [];
+
+    for (const m of this.middlewares) {
+      if (m.router !== this) continue;
+      const name = m.fn.name ? ` ${m.fn.name}` : "";
+      leaves.push({ idx: m.idx, text: `use${name} (priority ${m.priority})` });
+    }
+
+    for (const r of this.routes) {
+      if (r.router !== this) continue;
+      const method = (r.method === "*" ? "ALL" : r.method).padEnd(6);
+      const priority = r.priority !== 0 ? ` (priority ${r.priority})` : "";
+      leaves.push({
+        idx: r.idx,
+        text: `${method} ${normalize(r.path)}${priority}`
+      });
+    }
+
+    leaves.sort((a, b) => a.idx - b.idx);
+
+    const nodes: { text: string; branch?: Router<any> }[] = leaves;
+
+    for (const w of this.wsRoutes) {
+      if (w.router !== this) continue;
+      nodes.push({ text: `${"WS".padEnd(6)} ${normalize(w.path)}` });
+    }
+
+    for (const type of this.errorHandlers.keys()) {
+      nodes.push({ text: `error ${type}` });
+    }
+
+    for (const b of this.branches) {
+      const rel = b.base.startsWith(this.base === "/" ? "" : this.base)
+        ? b.base.slice(this.base === "/" ? 0 : this.base.length) || "/"
+        : b.base;
+      nodes.push({ text: rel + (b.guarded ? " [precheck]" : ""), branch: b });
+    }
+
+    nodes.forEach((node, i) => {
+      const last = i === nodes.length - 1;
+      lines.push(prefix + (last ? "└─ " : "├─ ") + node.text);
+      node.branch?.drawChildren(prefix + (last ? "   " : "│  "), lines);
+    });
   }
 
   protected resolveChain(pathname: string, method: string): ChainItem[] {
