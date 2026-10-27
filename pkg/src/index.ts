@@ -480,7 +480,7 @@ class Router<P extends Record<string, string> = {}> {
   }
 
   /**
-   * Displays this router as a hiarchy tree
+   * Displays this router as a hierarchy tree
    *
    * @example
    * ```ts
