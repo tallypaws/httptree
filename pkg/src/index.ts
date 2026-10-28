@@ -473,7 +473,7 @@ class Router<P extends Record<string, string> = {}> {
     const WSSCtor = getWebSocketServer();
     if (!WSSCtor) {
       throw new Error(
-        "WebSocket support requires the 'ws' package. Please install it first."
+        "WebSocket support requires the 'ws' package. Install it first."
       );
     }
     const full = join(this.base, path as string);
