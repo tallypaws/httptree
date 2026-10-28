@@ -311,6 +311,19 @@ async function renderError(
   return error.internalServerError();
 }
 
+async function runPrechecks(
+  checks: HttpTreePrecheck[] | undefined,
+  req: http.IncomingMessage,
+  res: http.ServerResponse
+): Promise<true | TreeResponse> {
+  for (const chk of checks ?? []) {
+    const out = await chk(req, res);
+    if (out === true) continue;
+    return isTreeResponse(out) ? out : error.forbidden();
+  }
+  return true;
+}
+
 class Router<P extends Record<string, string> = {}> {
   protected base: string;
   protected routes: HttpTreeRoute[];
@@ -730,16 +743,10 @@ class Router<P extends Record<string, string> = {}> {
       req.params = item.params;
 
       try {
-        let allowed = true;
-        for (const chk of item.prechecks ?? []) {
-          if (!(await chk(req, res))) {
-            allowed = false;
-            break;
-          }
-        }
+        const verdict = await runPrechecks(item.prechecks, req, res);
 
-        if (allowed) accept(await item.fn(req, res, getNext));
-        else accept(error.forbidden());
+        if (verdict === true) accept(await item.fn(req, res, getNext));
+        else accept(verdict);
       } catch (e) {
         await fail(e, item.router);
       }
@@ -818,12 +825,17 @@ class Router<P extends Record<string, string> = {}> {
 
       req.params = params;
 
-      for (const chk of r.prechecks) {
-        const ok = await chk(req, {} as any);
-        if (!ok) {
-          ws.close(1008, "Forbidden");
-          return;
-        }
+      let verdict: true | TreeResponse;
+      try {
+        verdict = await runPrechecks(r.prechecks, req, {} as any);
+      } catch (e) {
+        if (!isTreeResponse(e)) throw e;
+        verdict = e;
+      }
+
+      if (verdict !== true) {
+        ws.close(1008, http.STATUS_CODES[verdict.status] ?? "Forbidden");
+        return;
       }
 
       await r.handler(ws, req as any);
