@@ -6,6 +6,7 @@ on:
     paths:
       - "pkg/**"
       - "ext/**"
+  workflow_dispatch:
 
 concurrency: publish
 
