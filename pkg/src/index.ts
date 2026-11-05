@@ -1920,8 +1920,4 @@ export function root(
 
   return tree;
 }
-
-export function sex(hi: string) {
-  {
-  }
 }
