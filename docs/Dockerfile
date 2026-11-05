@@ -6,6 +6,7 @@ COPY package.json package-lock.json tsconfig.json ./
 COPY pkg ./pkg
 COPY ext ./ext
 RUN npm ci --ignore-scripts
+RUN npm run build -w pkg
 
 WORKDIR /app/docs
 COPY docs/package.json docs/pnpm-lock.yaml docs/pnpm-workspace.yaml ./
