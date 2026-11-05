@@ -1,0 +1,457 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap");
+
+@font-face {
+  font-family: "CourierPrimeCode";
+  src: url("/font/courierprimecode.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+body {
+  --color-ts-enum: var(--light-color-ts-enum);
+  --color-ts-enum-member: var(--light-color-ts-enum-member);
+  --color-ts-variable: var(--light-color-ts-variable);
+  --color-ts-function: var(--light-color-ts-function);
+  --color-ts-class: var(--light-color-ts-class);
+  --color-ts-interface: var(--light-color-ts-interface);
+  --color-ts-constructor: var(--light-color-ts-constructor);
+  --color-ts-property: var(--light-color-ts-property);
+  --color-ts-method: var(--light-color-ts-method);
+  --color-ts-reference: var(--light-color-ts-reference);
+  --color-ts-call-signature: var(--light-color-ts-call-signature);
+  --color-ts-index-signature: var(--light-color-ts-index-signature);
+  --color-ts-constructor-signature: var(--light-color-ts-constructor-signature);
+  --color-ts-parameter: var(--light-color-ts-parameter);
+  --color-ts-type-parameter: var(--light-color-ts-type-parameter);
+  --color-ts-accessor: var(--light-color-ts-accessor);
+  --color-ts-get-signature: var(--light-color-ts-get-signature);
+  --color-ts-set-signature: var(--light-color-ts-set-signature);
+  --color-ts-type-alias: var(--light-color-ts-type-alias);
+  --font-sans: "Nunito", sans-serif;
+  --font-mono: "CourierPrimeCode", monospace;
+  --icon-bg-opacity: 0.2;
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    --color-ts-enum: var(--dark-color-ts-enum);
+    --color-ts-enum-member: var(--dark-color-ts-enum-member);
+    --color-ts-variable: var(--dark-color-ts-variable);
+    --color-ts-function: var(--dark-color-ts-function);
+    --color-ts-class: var(--dark-color-ts-class);
+    --color-ts-interface: var(--dark-color-ts-interface);
+    --color-ts-constructor: var(--dark-color-ts-constructor);
+    --color-ts-property: var(--dark-color-ts-property);
+    --color-ts-method: var(--dark-color-ts-method);
+    --color-ts-reference: var(--dark-color-ts-reference);
+    --color-ts-call-signature: var(--dark-color-ts-call-signature);
+    --color-ts-index-signature: var(--dark-color-ts-index-signature);
+    --color-ts-constructor-signature: var(
+      --dark-color-ts-constructor-signature
+    );
+    --color-ts-parameter: var(--dark-color-ts-parameter);
+    --color-ts-type-parameter: var(--dark-color-ts-type-parameter);
+    --color-ts-accessor: var(--dark-color-ts-accessor);
+    --color-ts-get-signature: var(--dark-color-ts-get-signature);
+    --color-ts-set-signature: var(--dark-color-ts-set-signature);
+    --color-ts-type-alias: var(--dark-color-ts-type-alias);
+  }
+}
+
+.tsd-navigation a,
+.tsd-navigation summary > span,
+.tsd-page-navigation a {
+  padding: 0.4rem !important;
+  border-radius: 15px !important;
+}
+
+.tsd-page-toolbar {
+  backdrop-filter: blur(8px);
+  padding: 1rem 0;
+  background-color: color-mix(
+    var(--color-background),
+    transparent 30%
+  ) !important;
+  border-bottom: none;
+}
+
+:root {
+  --anchor-offset: calc(var(--dim-header-height) + 2rem + 0.75rem);
+}
+html [id] {
+  scroll-margin-top: var(--anchor-offset);
+}
+
+pre > button {
+  top: 0.1rem;
+  right: 0.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 25%;
+  background-color: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  font-size: 0;
+  line-height: 0;
+  transition:
+    opacity 0.1s,
+    background-color 0.2s;
+}
+pre > button::before {
+  content: "";
+  width: 1.25rem;
+  height: 1.25rem;
+  background-color: currentColor;
+  -webkit-mask: var(--icon-copy) center / contain no-repeat;
+  mask: var(--icon-copy) center / contain no-repeat;
+}
+pre > button:hover {
+  background-color: color-mix(
+    in srgb,
+    var(--md-sys-color-on-surface) 8%,
+    transparent
+  );
+}
+pre > button:active,
+pre > button:focus-visible {
+  background-color: color-mix(
+    in srgb,
+    var(--md-sys-color-on-surface) 12%,
+    transparent
+  );
+}
+pre > button:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+pre > button.visible {
+  color: var(--md-sys-color-primary);
+}
+pre > button.visible::before {
+  -webkit-mask-image: var(--icon-check);
+  mask-image: var(--icon-check);
+}
+:root {
+  --icon-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z'/%3E%3C/svg%3E");
+  --icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E");
+  --member-border: color-mix(
+    in srgb,
+    var(--md-sys-color-outline-variant) 60%,
+    transparent
+  );
+}
+
+.tsd-member-group > section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.tsd-panel.tsd-member {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0;
+  padding: 1.25rem 1.5rem 1.5rem;
+  border: 1px solid var(--member-border);
+  border-radius: 24px;
+  background-color: var(--md-sys-color-surface-container-low);
+}
+.tsd-panel.tsd-member > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.tsd-panel.tsd-member > h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  padding: 0 0 0.75rem;
+  margin: 0;
+  border-bottom: 1px solid var(--member-border);
+  font-size: 1.25rem;
+}
+.tsd-panel.tsd-member > h3 .tsd-tag {
+  margin: 0;
+}
+.tsd-panel.tsd-member > h3 .tsd-anchor-icon {
+  margin-left: 0;
+}
+
+.tsd-member .tsd-signatures {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin: 0;
+}
+.tsd-member .tsd-signatures > li {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.tsd-member .tsd-signatures > li + li {
+  padding-top: 1rem;
+  border-top: 1px dashed var(--member-border);
+}
+.tsd-member .tsd-signature {
+  background-color: var(--md-sys-color-surface-container);
+}
+.tsd-member .tsd-description {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0;
+}
+.tsd-member .tsd-description > *,
+.tsd-member .tsd-description > .tsd-panel,
+.tsd-member .tsd-signatures > li > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.tsd-member .tsd-comment > :last-child {
+  margin-bottom: 0;
+}
+
+.tsd-member .tsd-parameters-title,
+.tsd-member .tsd-description > .tsd-panel > h4,
+.tsd-member .tsd-returns-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.tsd-member .tsd-parameters-title,
+.tsd-member .tsd-description > .tsd-panel > h4 {
+  text-transform: uppercase;
+}
+.tsd-member .tsd-returns-title {
+  margin: 0;
+  letter-spacing: 0;
+  font-size: 0.95rem;
+}
+.tsd-member ul.tsd-parameter-list,
+.tsd-member ul.tsd-type-parameter-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  border-radius: 16px;
+  background-color: var(--md-sys-color-surface-container);
+  overflow: hidden;
+}
+.tsd-member .tsd-parameter-list > li,
+.tsd-member .tsd-type-parameter-list > li {
+  padding: 0.6rem 1rem;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.tsd-member .tsd-parameter-list > li + li,
+.tsd-member .tsd-type-parameter-list > li + li {
+  border-top: 1px solid var(--member-border);
+}
+.tsd-member .tsd-parameter-list > li.tsd-parameter-signature {
+  margin-left: 0;
+}
+
+.tsd-member .tsd-parameter-list ul.tsd-parameter-list,
+.tsd-member .tsd-parameter-list ul.tsd-type-parameter-list {
+  margin: 0.5rem 0 0.25rem 0.25rem;
+  border-left: 2px solid
+    color-mix(in srgb, var(--md-sys-color-primary) 45%, transparent);
+  border-radius: 0;
+  background: none;
+}
+.tsd-member .tsd-parameter-list ul .tsd-parameter-list > li {
+  padding: 0.35rem 0 0.35rem 0.85rem;
+}
+.tsd-member .tsd-parameter-list ul .tsd-parameter-list > li + li {
+  border-top: none;
+}
+
+.tsd-member .tsd-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--member-border);
+  font-size: 0.8rem;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.tsd-member .tsd-sources p,
+.tsd-member .tsd-sources ul {
+  margin: 0;
+}
+.tsd-member .tsd-sources ul {
+  padding: 0;
+  list-style: none;
+}
+
+.tsd-signature {
+  border-radius: 12px !important;
+  font-family: var(--font-mono) !important;
+}
+
+.tsd-type-parameter-list,
+.tsd-parameter-list {
+  font-family: var(--font-mono) !important;
+}
+
+.tsd-tag {
+  margin-right: 5px;
+}
+
+.tsd-signatures:has(> li:not(.tsd-signature, .tsd-description)) {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin: 0 0 1em;
+}
+.tsd-signatures > li:not(.tsd-signature, .tsd-description) {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.tsd-signatures
+  > li:not(.tsd-signature, .tsd-description) {
+  padding-top: 1.2rem;
+  border-top: 1px dashed var(--member-border);
+}
+
+.tsd-signatures:has(> li:not(.tsd-signature, .tsd-description) + li) {
+  counter-reset: overload;
+}
+.tsd-signatures
+  > li:not(.tsd-signature, .tsd-description):not(:only-child)::before {
+  counter-increment: overload;
+  content: "overload " counter(overload);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--md-sys-color-on-surface-variant);
+  
+}
+
+.tsd-type-declaration > ul.tsd-parameters {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  list-style: none;
+}
+.tsd-type-declaration > ul.tsd-parameters + ul.tsd-parameters {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--member-border);
+}
+.tsd-type-declaration ul.tsd-parameters > li.tsd-parameter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem 0;
+  margin: 0;
+}
+.tsd-type-declaration ul.tsd-parameters > li.tsd-parameter + li.tsd-parameter {
+  border-top: 1px dashed var(--member-border);
+}
+.tsd-type-declaration ul.tsd-parameters > li.tsd-parameter:first-child {
+  padding-top: 0.5rem;
+}
+.tsd-type-declaration ul.tsd-parameters > li.tsd-parameter:last-child {
+  padding-bottom: 0;
+}
+.tsd-type-declaration ul.tsd-parameters > li.tsd-parameter > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.tsd-type-declaration ul.tsd-parameters > li.tsd-parameter > h5 {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.tsd-type-declaration ul.tsd-parameters > li.tsd-parameter .tsd-comment > :last-child {
+  margin-bottom: 0;
+}
+
+table,
+th {
+    border: none !important;
+    border-collapse: collapse;
+}
+table {
+    border-radius: .5em;
+    overflow: clip;
+    outline: 1px solid var(--md-sys-color-secondary-container);
+}
+
+thead {
+    border-bottom: 1px solid var(--md-sys-color-secondary-container);
+}
+td:first-child {
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: none !important;
+    border-collapse: collapse;
+}
+td:last-child {
+    border-top: none !important;
+    border-bottom: none !important;
+    border-right: none !important;
+    border-collapse: collapse;
+}
+
+body {
+    --color-alert-warning: #ffc134 !important;
+    --color-alert-note: #62c2ff;
+}
+
+.tsd-alert {
+    background: var(--code-background) !important;
+
+    border-radius: .5em;
+
+    border-top: 1px solid;
+
+    border-left: none;
+    outline: 1px solid color-mix(in srgb, var(--md-sys-color-secondary-container), transparent 50%);
+}
+
+.tsd-alert-warning {
+    border-image: linear-gradient( to right,
+    transparent 0%,
+    var(--color-alert-warning) 50%,
+    transparent 100%) 1;
+}
+
+.tsd-alert-note {
+    border-image: linear-gradient( to right,
+    transparent 0%,
+    var(--color-alert-note) 50%,
+    transparent 100%) 1;
+}
+
+h1:has(.tsd-tag) {
+    display: flex
+}
+
+h1 > .tsd-tag {
+    order: -1;
+    opacity: 50%;
+    border: none;
+}
+
+.tsd-alert-title span {
+    display: none
+}
+
+.tsd-alert p {
+    margin-top: -1.4em;
+    margin-left: 1.2em;
+}
+
+.tsd-alert-title svg {
+    transform: translateX(-4px) translateY(4px);
+}

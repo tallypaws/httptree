@@ -1,0 +1,45 @@
+{
+  "name": "@tally.paws/httptree-ext-cors",
+  "version": "0.1.0",
+  "description": "CORS for httptree",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc && node ../../pkg/scripts/strip-callouts.mjs dist"
+  },
+  "keywords": [
+    "httptree",
+    "extension",
+    "cors"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@tally.paws/httptree": "^0.6.0"
+  },
+  "devDependencies": {
+    "@tally.paws/httptree": "*",
+    "@types/node": "^25.2.3",
+    "typescript": "^5.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tallypaws/httptree.git",
+    "directory": "ext/cors"
+  }
+}

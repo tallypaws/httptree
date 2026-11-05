@@ -1,21 +1,23 @@
 {
     "name": "@tally.paws/httptree",
-    "version": "0.5.5",
+    "version": "0.6.0",
     "description": "A TypeScript library for creating and managing HTTP request trees.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "scripts": {
-        "build": "tsc",
+        "build": "tsc && node scripts/strip-callouts.mjs",
         "lint": "eslint src --ext .ts"
     },
     "repository": {
         "type": "git",
-        "url": ""
+        "url": "git+https://github.com/tallypaws/httptree.git",
+        "directory": "pkg"
     },
     "keywords": [
         "http",
         "tree",
-        "typescript"
+        "typescript",
+        "router"
     ],
     "author": "",
     "type": "module",

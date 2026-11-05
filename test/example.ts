@@ -1,7 +1,6 @@
 import { error, html, json, redirect, root, text } from "httptree";
 
-const tree = root();
-
+const tree = root()
 //methods
 tree.get("/path", () => text("OK"));
 tree.post("/path", () => text("OK"));
@@ -14,13 +13,19 @@ tree.all("/all", (req) => text(req.method!));
 // params
 tree.get("/param/required/[required]", (req) => text(req.params.required));
 tree.get("/param/optional/[[optional]]", (req) =>
-  text(req.params.optional ?? "undefined"),
+  text(req.params.optional ?? "undefined")
 );
 tree.get("/param/rest/[...rest]", (req) =>
-  text(req.params.rest.toString() ?? "undefined"),
+  text(req.params.rest.toString() ?? "undefined")
 );
 
 // ws
+
+// runs before the handshake, so a rejection is a real http response
+tree.useWS((req) => {
+  if (req.url?.includes("deny")) throw error.forbidden("not today");
+  req.data.joined = Date.now();
+});
 
 tree.ws("/ws", (ws) => {
   ws.send("hello from server");
@@ -59,10 +64,7 @@ a.get("/", (req) => {
 const b = a.branch("/b/[b]");
 
 b.get("/", (req) => {
-  return json({
-    a: req.params.a,
-    b: req.params.b,
-  });
+  return json({ a: req.params.a, b: req.params.b });
 });
 
 // err
@@ -76,11 +78,7 @@ tree.get("/crash", () => {
 //etc
 
 tree.get("/headers", () =>
-  text("with headers", {
-    headers: {
-      "X-Custom": "hello",
-    },
-  }),
+  text("with headers", { headers: { "X-Custom": "hello" } })
 );
 
 tree.get("/redirect", () => redirect("/path"));
@@ -89,18 +87,12 @@ tree.get("/html", () =>
   html(`
     <h1>hello</h1>
     <p>world</p>
-  `),
+  `)
 );
 
-tree.get("/json", () =>
-  json({
-    hello: "world",
-    cool: true,
-  }),
-);
+tree.get("/json", () => json({ hello: "world", cool: true }));
 
 //middleware
-
 
 tree.use((req, res) => {
   if (req.url === "/middleware") return text("hello"); // you could also res.end() but thats evil
@@ -116,7 +108,7 @@ tree.use((req) => {
 
 // after the main route
 tree.use((req) => {
-  if (req.isError()) return; 
+  if (req.isError()) return;
   req.response!.headers["X-Took"] = `${Date.now() - req.data.start}ms`;
 }, -1);
 
@@ -131,9 +123,7 @@ admin.use((req) => {
 admin.get("/stats", () => json({ users: 3 }));
 
 tree.get("/data", (req) => {
-  return json({
-    started: req.data.start,
-  });
+  return json({ started: req.data.start });
 });
 
 tree.get("/async", async () => {
@@ -142,21 +132,21 @@ tree.get("/async", async () => {
   return text("done");
 });
 
-
-
 tree.post("/body/json", async (req) => {
   const body = await req.getJSON<{ name: string }>({ maxSize: "10kb" });
   return json({ hello: body.name });
 });
 
-tree.post("/body/text", async (req) => text((await req.getText()).toUpperCase()));
+tree.post("/body/text", async (req) =>
+  text((await req.getText()).toUpperCase())
+);
 
 tree.post("/body/validated", async (req) => {
   const body = await req.getJSON({
     validate: (v: any) => {
       if (typeof v?.n !== "number") throw new Error("n must be a number");
       return v as { n: number };
-    },
+    }
   });
   return json({ doubled: body.n * 2 });
 });
@@ -164,7 +154,10 @@ tree.post("/body/validated", async (req) => {
 tree.post("/body/upload", async (req) => {
   const avatar = await req.getFile("avatar", { maxFileSize: "2mb" });
   const { fields } = await req.getForm();
-  return json({ fields, avatar: avatar && { name: avatar.filename, size: avatar.size } });
+  return json({
+    fields,
+    avatar: avatar && { name: avatar.filename, size: avatar.size }
+  });
 });
 
 // legacy
@@ -174,11 +167,7 @@ tree.get("/express", (req, res) => {
   res.statusCode = 200;
   res.setHeader("Content-Type", "application/json");
 
-  res.end(
-    JSON.stringify({
-      hello: "world",
-    }),
-  );
+  res.end(JSON.stringify({ hello: "world" }));
 });
 
 // this does the same exact thing
@@ -210,6 +199,6 @@ await tree.listen(3000);
 const aSECONDtree = root();
 aSECONDtree.get("/hawwo", () => "HI");
 aSECONDtree.use(() => {
-  console.log("request!")
-})
+  console.log("request!");
+});
 await aSECONDtree.listen(3001);

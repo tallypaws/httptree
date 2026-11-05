@@ -2,3 +2,5 @@ node_modules/
 dist/
 .env
 *.log
+/docs/generated
+/docs/shapes

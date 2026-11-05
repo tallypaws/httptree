@@ -6,21 +6,26 @@ import { _require, debug, parseSize } from "./util.js";
 /** bytes (`1024`) or string (`"512kb"`, `"1.5mb"`, `"2gb"`)*/
 export type Size = number | string;
 
+/**
+ * limits for reading request bodies
+ * going over a limit responds with a `413`
+ */
 export interface BodyConfig {
+  
   /** max size for JSON or text bodies
-   * default 1mb */
+  @default 1mb */
   maxSize?: Size;
-  /** Max size for files
-   * @default 10mb */
+  /** max size for a single file
+  @default 10mb */
   maxFileSize?: Size;
   /** max number of files
-   * @default 10 */
+  @default 10 */
   maxFiles?: number;
-  /** max number fields form
-   * @default 100 */
+  /** max number of fields in a form
+  @default 100 */
   maxFields?: number;
   /** max size of a single multipart field
-   * @default 100kb*/
+  @default 100kb*/
   maxFieldSize?: Size;
 }
 
@@ -33,32 +38,125 @@ export const DefaultBodyConfig = {
 } as const satisfies Required<BodyConfig>;
 
 export interface BufferOptions {
+  /** max size for this call, overrides {@link BodyConfig.maxSize} */
   maxSize?: Size;
 }
 
 export interface TextOptions extends BufferOptions {
+  /** charset to decode with */
   encoding?: string;
 }
 
+/**
+ * [Standard Schema](https://standardschema.dev)
+ *
+ * @category Misc
+ */
+export interface StandardSchemaV1<Input = unknown, Output = Input> {
+  readonly "~standard": {
+    readonly version: 1;
+    readonly vendor: string;
+    readonly validate: (
+      value: unknown
+    ) => StandardResult<Output> | Promise<StandardResult<Output>>;
+    readonly types?:
+      | { readonly input: Input; readonly output: Output }
+      | undefined;
+  };
+}
+
+/** @category Misc */
+export type StandardResult<Output> =
+  | { readonly value: Output; readonly issues?: undefined }
+  | { readonly issues: ReadonlyArray<StandardIssue> };
+
+/** @category Misc */
+export interface StandardIssue {
+  readonly message: string;
+  readonly path?: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }>;
+}
+
+/** @category Misc */
+export type InferOutput<S> =
+  S extends StandardSchemaV1<any, infer O> ? O : never;
+
+/**
+ * runs a Standard Schema on a value
+ *
+ * @throws a `422` response with `{ error: "Validation failed", issues: [{ path, message }] }`
+ *
+ * @example
+ * ```ts
+ * const page = await validateSchema(z.coerce.number().int(), req.params.page);
+ * ```
+ *
+ * @category Misc
+ */
+export async function validateSchema<S extends StandardSchemaV1>(
+  schema: S,
+  value: unknown
+): Promise<InferOutput<S>> {
+  const result = await schema["~standard"].validate(value);
+  if (result.issues) {
+    throw error.unprocessableEntity({
+      error: "Validation failed",
+      issues: result.issues.map((i) => ({
+        path: (i.path ?? [])
+          .map((seg) =>
+            String(typeof seg === "object" ? (seg as any).key : seg)
+          )
+          .join("."),
+        message: i.message
+      }))
+    });
+  }
+  return result.value as InferOutput<S>;
+}
+
 export interface JSONOptions<T = unknown> extends BufferOptions {
+  /** reject with a `415` if `Content-Type` isnt `application/json` or `+json`, only checked when the request has a body
+   * @default true */
   requireContentType?: boolean;
+  /** return `undefined` for an empty body instead of failing with a `400`
+   * @default false */
   allowEmpty?: boolean;
+  /** runs on the parsed value and returns the typed result, throw to answer with a `422` (a thrown response is used as is)
+   * @example
+   * ```ts
+   * await req.getJSON({ validate: (v) => userSchema.parse(v) });
+   * ```
+   */
   validate?: (value: unknown) => T | Promise<T>;
+  /** a [Standard Schema](https://standardschema.dev) 
+   *  an error answers with a `422` with a list of issues
+   *
+   * this runs before `validate`
+   * @example
+   * ```ts
+   * const user = await req.getJSON({ schema: z.object({ name: z.string() }) });
+   * ```
+   */
+  schema?: StandardSchemaV1<any, any>;
 }
 
 export type FormOptions = BodyConfig;
 
+/** a file from a multipart form */
 export interface UploadedFile {
   field: string;
-  /** @ */
   filename: string;
   mimeType: string;
+  /** size in bytes */
   size: number;
+  /** the whole file */
   data: Buffer;
 }
 
+/** a parsed form, see {@link TreeRequestExtras.getForm} */
 export interface ParsedForm {
+  /** text fields, a name sent more than once becomes an array */
   fields: Record<string, string | string[]>;
+  /** uploaded files */
   files: UploadedFile[];
 }
 
@@ -70,8 +168,8 @@ export interface BodyState {
 const num = (v: Size | undefined, fallback: Size, name: string) =>
   parseSize(v ?? fallback, name);
 
-function tooLarge(what: string, max: number) {
-  return error.payloadTooLarge(`${what} (limit: ${max} bytes)`, {
+function tooLarge(thing: string, max: number) {
+  return error.payloadTooLarge(`${thing} (limit: ${max} bytes)`, {
     Connection: "close"
   });
 }
@@ -146,6 +244,7 @@ function collect(req: http.IncomingMessage, max: number): Promise<Buffer> {
   });
 }
 
+/** body as a buffer, see {@link TreeRequestExtras.getBuffer} */
 export async function readBuffer(
   req: http.IncomingMessage,
   st: BodyState,
@@ -173,6 +272,7 @@ function decode(buf: Buffer, label = "utf-8") {
   }
 }
 
+/** body as text, see {@link TreeRequestExtras.getText} */
 export async function readText(
   req: http.IncomingMessage,
   st: BodyState,
@@ -184,6 +284,7 @@ export async function readText(
   return decode(buf, opts?.encoding ?? charset);
 }
 
+/** body as JSON, see {@link TreeRequestExtras.getJSON} */
 export async function readJSON<T>(
   req: http.IncomingMessage,
   st: BodyState,
@@ -217,6 +318,7 @@ export async function readJSON<T>(
     throw error.badRequest("Invalid JSON");
   }
 
+  if (opts?.schema) value = await validateSchema(opts.schema, value);
   if (!opts?.validate) return value as T;
 
   try {
@@ -227,6 +329,7 @@ export async function readJSON<T>(
   }
 }
 
+/** body as a form, see {@link TreeRequestExtras.getForm} */
 export function readForm(
   req: http.IncomingMessage,
   st: BodyState,
@@ -289,7 +392,7 @@ function loadBusboy(): BusboyFactory {
     return busboy!;
   } catch {
     throw new Error(
-      "httptree: multipart parsing requires 'busboy' package: npm i busboy"
+      "httptree: form parsing support requires the 'busboy' package. Install it first."
     );
   }
 }
@@ -313,8 +416,7 @@ async function parseMultipart(
     DefaultBodyConfig.maxFieldSize,
     "maxFieldSize"
   );
-  const maxFiles =
-    opts?.maxFiles ?? cfg.maxFiles ?? DefaultBodyConfig.maxFiles;
+  const maxFiles = opts?.maxFiles ?? cfg.maxFiles ?? DefaultBodyConfig.maxFiles;
   const maxFields =
     opts?.maxFields ?? cfg.maxFields ?? DefaultBodyConfig.maxFields;
 

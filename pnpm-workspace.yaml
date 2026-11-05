@@ -1,0 +1,2 @@
+minimumReleaseAgeExclude:
+  - '@tally.paws/httptree@0.6.0'

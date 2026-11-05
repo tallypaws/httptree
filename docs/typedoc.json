@@ -1,0 +1,31 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "tsconfig": "../tsconfig.json",
+  "entryPoints": ["./entries/core.ts", "./entries/extensions.ts"],
+  "entryPointStrategy": "resolve",
+  "out": "generated",
+  "plugin": ["typedoc-material-theme", "./plugins/flatten-core.mjs"],
+  "themeColor": "#aaaaff",
+  "customCss": "./styles.css",
+  "readme": "./guides/main.md",
+  "projectDocuments": [
+    "./guides/quickstart.md",
+    "./guides/basics.md",
+    "./guides/advanced.md"
+  ],
+  "sort": ["kind", "instance-first", "source-order"],
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": false,
+    "includeFolders": true
+  },
+  "categoryOrder": ["Responses", "Misc", "*"],
+  "defaultCategory": "Other",
+  "hideGenerator": true,
+  "searchInComments": true,
+  "searchInDocuments": true,
+  "name": "httptree",
+  "includeVersion": false, // doesnt allow setting where it gets the package.json file for some reason
+  "navigationLinks": { "Github": "https://github.com/tallypaws/httptree" },
+
+}

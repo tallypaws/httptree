@@ -4,11 +4,13 @@
     "module": "nodenext",
     "declaration": true,
     "moduleResolution": "nodenext",
-    "rootDir": "./test",
+    "rootDir": ".",
     "outDir": "dist",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["node"]
   },
-  "include": ["test/**/*", "test"]
+  "exclude": ["docs/generated"],
+  "include": ["docs/entries/**/*"]
 }

@@ -1,18 +1,26 @@
 {
-  "name": "test",
+  "name": "httptree",
   "version": "0.0.0",
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "scripts": {
-    "build": "tsc && cd pkg && npm run build && cd ..",
+    "build": "npm run build --workspaces --if-present && tsc",
     "lint": "eslint src --ext .ts",
     "test": "node dist/test.js",
-    "ex": "node dist/example.js"
+    "ex": "node dist/example.js",
+    "docs:dev": "pnpm run docs:serve & pnpm run docs:watch",
+    "docs:watch": "cd docs && pnpm run gen --watch",
+    "docs:serve": "cd docs && pnpm run start"
   },
   "dependencies": {
     "httptree": "file:./pkg"
   },
-  "type": "module"
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "pkg",
+    "ext/*"
+  ]
 }
