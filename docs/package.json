@@ -26,6 +26,7 @@
     "@resvg/resvg-js": "2.6.2",
     "@tally.paws/webpatcher": "^0.1.1",
     "@types/node": "^26.6.5",
+    "esbuild": "^0.28.2",
     "satori": "0.62.0",
     "typedoc": "^0.28.20"
   },
