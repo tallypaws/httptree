@@ -27,7 +27,7 @@ await tree.listen(3000);
 - **built in body parsing**: json (with `validate`), forms and file uploads, with size limits set once for the whole tree, no body-parser or multer
 - **first class websocket support**: same path syntax, same branches and guards as http routes
 - **errors you control**: automatic `404` and `405` errors, and error handlers are configurable per type and per branch
-- **extensions**: `root().extend(cookies).extend(cors())` adds typed members and middleware to a tree, official ones for cookies, cors, compression, static files and validate, see [the extensions guide](./extensions.md)
+- **extensions**: `root().extend(cookies).extend(cors())` adds typed members and middleware to a tree, official ones for cookies, cors, compression, static files, ip and validate, see [the extensions guide](./extensions.md)
 - **no required runtime dependencies**: just node's `http`, with `ws` and `busboy` optional for websockets and forms
 
 see [the quickstart guide](./quickstart.md)
